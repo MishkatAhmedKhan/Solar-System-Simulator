@@ -1,0 +1,23 @@
+# Build outputs
+bin/*.exe
+bin/*.dll
+*.exe
+
+# Object files and logs
+*.o
+*.obj
+*.log
+
+# MSVC / Visual Studio Code
+.vscode/
+*.suo
+*.sln
+*.user
+
+# Dear ImGui settings
+imgui.ini
+
+# Temporary and test files
+test*.cpp
+test*.exe
+readme.txt
