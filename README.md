@@ -1,6 +1,8 @@
 # Solar System Simulator
 
-https://github.com/MishkatAhmedKhan/Solar-System-Simulator/raw/main/assets/demo.mp4
+<div align="center">
+  <video src="https://raw.githubusercontent.com/MishkatAhmedKhan/Solar-System-Simulator/main/assets/demo.mp4" width="100%" controls autoplay loop muted playsinline></video>
+</div>
 
 An infinitely scalable, procedurally generated N-body simulation of the Solar System built from scratch in C++ and pure OpenGL.
 
