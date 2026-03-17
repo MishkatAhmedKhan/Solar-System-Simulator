@@ -60,15 +60,24 @@ int main() {
 
     // Solar system objects
     vector<Object> objects {
-        Object({0,0,0},{0,0,0},{0,0,0}, 2.0e30f,1410, true, {1,.85f,.2f,1}),       // Sun
-        Object({5.79e10f,0,7.07e9f},{0,4.79e4f,-5.86e3f},{0,0,0}, 3.285e23f,5430,false,{.55f,.52f,.50f,1}),  // Mercury
-        Object({1.08e11f,0,4.06e9f},{0,3.50e4f,-2.07e3f},{0,0,0}, 4.867e24f,5243,false,{.90f,.82f,.55f,1}),  // Venus
-        Object({1.496e11f,0,0},{0,2.978e4f,0},{0,0,0}, 5.972e24f,5515,false,{.15f,.45f,.75f,1}),             // Earth
-        Object({2.279e11f,0,7.35e9f},{0,2.41e4f,-780},{0,0,0}, 6.39e23f,3933,false,{.78f,.30f,.12f,1}),      // Mars
-        Object({7.785e11f,0,1.77e10f},{0,1.31e4f,-297},{0,0,0}, 1.89813e27f,1326,false,{.82f,.63f,.38f,1}),  // Jupiter
-        Object({1.433e12f,0,6.23e10f},{0,9.68e3f,-420},{0,0,0}, 5.683e26f,687,false,{.87f,.78f,.50f,1}),     // Saturn
-        Object({2.877e12f,0,3.86e10f},{0,6.80e3f,-91.3f},{0,0,0}, 8.681e25f,1271,false,{.55f,.82f,.87f,1}),  // Uranus
-        Object({4.503e12f,0,1.39e11f},{0,5.43e3f,-168},{0,0,0}, 1.024e26f,1638,false,{.22f,.35f,.75f,1})     // Neptune
+        // Sun (static at origin initially)
+        Object({0, 0, 0}, {0, 0, 0}, {0, 0, 0}, 2.0e30f, 1410, true, {1, .85f, .2f, 1}),
+        // Mercury: 7.01 degree inclination
+        Object({5.79e10f, 0, 0}, {0, 5.78e3f, 4.700e4f}, {0, 0, 0}, 3.285e23f, 5430, false, {.55f, .52f, .50f, 1}),
+        // Venus: 3.39 degree inclination
+        Object({1.082e11f, 0, 0}, {0, 2.07e3f, 3.496e4f}, {0, 0, 0}, 4.867e24f, 5243, false, {.90f, .82f, .55f, 1}),
+        // Earth: 0 degree inclination (Ecliptic reference)
+        Object({1.496e11f, 0, 0}, {0, 0, 2.978e4f}, {0, 0, 0}, 5.972e24f, 5515, false, {.15f, .45f, .75f, 1}),
+        // Mars: 1.85 degree inclination
+        Object({2.279e11f, 0, 0}, {0, 7.77e2f, 2.406e4f}, {0, 0, 0}, 6.39e23f, 3933, false, {.78f, .30f, .12f, 1}),
+        // Jupiter: 1.31 degree inclination
+        Object({7.785e11f, 0, 0}, {0, 2.98e2f, 1.307e4f}, {0, 0, 0}, 1.8981e27f, 1326, false, {.82f, .63f, .38f, 1}),
+        // Saturn: 2.49 degree inclination
+        Object({1.432e12f, 0, 0}, {0, 4.20e2f, 9.670e3f}, {0, 0, 0}, 5.683e26f, 687, false, {.87f, .78f, .50f, 1}),
+        // Uranus: 0.77 degree inclination
+        Object({2.871e12f, 0, 0}, {0, 91.3f, 6.799e3f}, {0, 0, 0}, 8.681e25f, 1271, false, {.55f, .82f, .87f, 1}),
+        // Neptune: 1.77 degree inclination
+        Object({4.495e12f, 0, 0}, {0, 167.6f, 5.427e3f}, {0, 0, 0}, 1.024e26f, 1638, false, {.22f, .35f, .75f, 1})
     };
     ComputeAccelerations(objects);
     orbitTrails.resize(objects.size());
@@ -108,17 +117,18 @@ int main() {
                 : objects[followPlanet].getPosition()-objects[0].getPosition();
             glm::vec3 pg = pp/(float)SCALE;
             float pr = (objects[followPlanet].getRadius()/(float)SCALE)*planetSizeMultiplier;
+            pg.y += GetSpacetimeDepth(pg.x, pg.z, objects) + pr * 1.1f;
             if (glm::length(followOffset)<0.001f) followOffset = glm::vec3(0,pr*2,pr*5);
             cameraPos = pg + followOffset;
 
             // Sun-Focus mode: auto-orient camera to always look at the Sun
             if (followViewMode == 0 && followPlanet != 0) {
-                glm::vec3 sunGL = glm::vec3(0.0f); // Sun is at origin in GL coords
-                glm::vec3 dirToSun = glm::normalize(sunGL - cameraPos);
-                cameraFront = dirToSun;
+                float sunR = (objects[0].getRadius()/(float)SCALE)*planetSizeMultiplier;
+                glm::vec3 sunPos = glm::vec3(0, GetSpacetimeDepth(0, 0, objects) + sunR * 1.1f, 0);
+                cameraFront = glm::normalize(sunPos - cameraPos);
                 // Update yaw/pitch to match so arrow keys work relative to Sun direction
-                pitch_ = glm::degrees(asin(dirToSun.y));
-                yaw_ = glm::degrees(atan2(dirToSun.z, dirToSun.x));
+                pitch_ = glm::degrees(asin(cameraFront.y));
+                yaw_ = glm::degrees(atan2(cameraFront.z, cameraFront.x));
             }
             // Observer mode (followViewMode==1): camera direction stays user-controlled
         }
@@ -206,7 +216,12 @@ int main() {
             for (int i=1;i<(int)objects.size();i++) {
                 if (orbitTrails[i].size()<2) continue;
                 vector<float> tv;
-                for (auto& p : orbitTrails[i]) { tv.push_back(p.x);tv.push_back(p.y);tv.push_back(p.z); tv.push_back(0);tv.push_back(0);tv.push_back(0); }
+                float objGr = (objects[i].getRadius()/(float)SCALE)*planetSizeMultiplier;
+                for (auto& p : orbitTrails[i]) { 
+                    float dp = p.y + GetSpacetimeDepth(p.x, p.z, objects) + objGr * 1.1f;
+                    tv.push_back(p.x); tv.push_back(dp); tv.push_back(p.z); 
+                    tv.push_back(0); tv.push_back(0); tv.push_back(0); 
+                }
                 glm::vec4 c=objects[i].getColor();
                 glUniform4f(colLoc, c.r*0.5f,c.g*0.5f,c.b*0.5f,0.6f);
                 glBindVertexArray(trailVAO); glBindBuffer(GL_ARRAY_BUFFER,trailVBO);
@@ -221,6 +236,7 @@ int main() {
             glm::vec3 P = (&obj==&objects[0]) ? obj.getPosition() : obj.getPosition()-objects[0].getPosition();
             glm::vec3 gp = P/(float)SCALE;
             float gr = (obj.getRadius()/(float)SCALE)*planetSizeMultiplier;
+            gp.y += GetSpacetimeDepth(gp.x, gp.z, objects) + gr * 1.1f;
             glm::mat4 m = glm::scale(glm::translate(glm::mat4(1),gp), glm::vec3(gr));
             glUniformMatrix4fv(modLoc,1,GL_FALSE,glm::value_ptr(m));
             glm::vec4 c=obj.getColor();
@@ -239,6 +255,8 @@ int main() {
         for (int i = 0; i < objects.size(); i++) {
             glm::vec3 P = (i == 0) ? objects[i].getPosition() : objects[i].getPosition() - objects[0].getPosition();
             glm::vec3 gp = P / (float)SCALE;
+            float gr = (objects[i].getRadius()/(float)SCALE)*planetSizeMultiplier;
+            gp.y += GetSpacetimeDepth(gp.x, gp.z, objects) + gr * 1.1f;
             // Project 3D GL coordinate to 2D NDC bounding box
             glm::vec4 ndc = viewProj * glm::vec4(gp, 1.0f);
             if (ndc.z > 0.0f) { // Only if in front of camera

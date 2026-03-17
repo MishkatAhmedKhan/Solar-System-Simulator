@@ -151,28 +151,59 @@ void InitSpacetimeGrid() {
     glBindVertexArray(0);
 }
 
+float GetSpacetimeDepth(float x, float z, const vector<Object>& objects) {
+    if (physicsMode != EINSTEIN || !showSpacetimeGrid) return 0.0f;
+    float maxDepth = 0.0f;
+    
+    for (size_t k = 0; k < objects.size(); k++) {
+        glm::vec3 op = (k==0) ? objects[0].getPosition() : objects[k].getPosition() - objects[0].getPosition();
+        glm::vec3 gp = op / (float)SCALE;
+        float dx = x - gp.x, dz = z - gp.z;
+        
+        // Calculate a fixed visual radius for smoothing, always using Enhanced Visual scale (200)
+        // so the funnel bowl stays smooth in both Enhanced Visual AND True Scale modes
+        float grFixed = (objects[k].getRadius() / (float)SCALE) * 200.0f;
+        // The smoothing parameter forces the derivative at the origin to uniquely be 0.
+        // This flawlessly rounds the bottom of the singularity spike into a smooth parabolic bowl.
+        float smoothing = grFixed * 0.8f; 
+        float r = sqrt(dx*dx + dz*dz + smoothing*smoothing);
+        
+        float massRatio = objects[k].getMass() / 2.0e30f;
+        if (massRatio > 1e-8f) {
+            // Calibrate the visual Schwarzschild radius to create a perfectly proportioned rubber-sheet funnel
+            float rs = 20.0f * massRatio; 
+            float R_max = 4000.0f; // Visual flat boundary
+            
+            if (r < R_max) {
+                float r_eff = max(r, rs); // Cap mathematically at Event Horizon
+                // The actual Flamm Paraboloid geometry curve: 2 * sqrt(rs * (r - rs))
+                float flamm = 2.0f * sqrt(rs * (r_eff - rs));
+                float flatY = 2.0f * sqrt(rs * (R_max - rs));
+                
+                // Deepen the funnel mathematically downward from flat zero
+                float y = flamm - flatY; 
+                
+                // Additive combination of gravity wells
+                if (y < maxDepth) maxDepth = y;
+            }
+        }
+    }
+    return maxDepth;
+}
+
 void UpdateSpacetimeGrid(const vector<Object>& objects) {
-    const int R = 100;
-    const float ext = 3000.0f, cell = 2*ext/R;
-    // Compute vertex positions with gravitational deformation (Flamm's paraboloid inspired)
+    const int R = 150; 
+    const float ext = 2000.0f, cell = 2*ext/R;
+    
     vector<glm::vec3> pos((R+1)*(R+1));
     for (int iz = 0; iz <= R; iz++) {
         for (int ix = 0; ix <= R; ix++) {
-            float x = -ext + ix*cell, z = -ext + iz*cell, y = 0;
-            for (size_t k = 0; k < objects.size(); k++) {
-                glm::vec3 op = (k==0) ? objects[0].getPosition()
-                    : objects[k].getPosition() - objects[0].getPosition();
-                glm::vec3 gp = op / (float)SCALE;
-                float dx = x-gp.x, dz = z-gp.z;
-                float d = sqrt(dx*dx + dz*dz);
-                float mr = objects[k].getMass() / 2.0e30f;
-                // Deep funnel: strong 1/sqrt(d) near mass, fading at distance
-                float strength = 800.0f * sqrt(max(mr, 0.0f));
-                y -= strength / sqrt(d + 2.0f);
-            }
+            float x = -ext + ix*cell, z = -ext + iz*cell;
+            float y = GetSpacetimeDepth(x, z, objects);
             pos[iz*(R+1)+ix] = glm::vec3(x, y, z);
         }
     }
+    
     // Build line pairs
     vector<float> v;
     auto push = [&](glm::vec3 p) {

@@ -6,4 +6,5 @@ void CreateUnitSphere(int sec=50, int stk=50);
 void CreateStarfield();
 void InitSpacetimeGrid();
 void UpdateSpacetimeGrid(const vector<Object>& objects);
+float GetSpacetimeDepth(float x, float z, const vector<Object>& objects);
 void printHelp();
