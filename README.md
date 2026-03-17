@@ -2,6 +2,10 @@
 
 An infinitely scalable, procedurally generated N-body simulation of the Solar System built from scratch in C++ and pure OpenGL.
 
+https://github.com/user-attachments/assets/ac9bd26c-4a2a-4001-8f85-97ca4eb201cd
+
+
+
 ## Features
 - **Accurate N-body Physics:** Tracks the gravitational interactions of planets. Features both purely Newtonian physics ($1/r^2$) and an unconditionally stable Einstein General Relativity (GR) 1st Post-Newtonian ($1/r^4$) simulator for testing perihelion precession.
 - **Procedural Rendering:** Fully un-textured! All planets, the dynamic surface of the Sun (granulation, solar spots), and the majestic backdrop Nebula Skybox are driven entirely by custom 3D mathematical noise (Seamless Simplex Noise, FBM).
